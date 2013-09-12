@@ -1,6 +1,6 @@
 /**
  * State-based routing for AngularJS
- * @version v0.2.0
+ * @version v0.2.0-dev-2013-09-12
  * @link http://angular-ui.github.com/
  * @license MIT License, http://www.opensource.org/licenses/MIT
  */
@@ -214,7 +214,7 @@ function $Resolve(  $q,    $injector) {
         }
         // Wait for any parameter that we have a promise for (either from parent or from this
         // resolve; in that case study() will have made sure it's ordered before us in the plan).
-        params.forEach(function (dep) {
+        forEach(params, function (dep) {
           if (promises.hasOwnProperty(dep) && !locals.hasOwnProperty(dep)) {
             waitParams++;
             promises[dep].then(function (result) {
@@ -784,7 +784,7 @@ function $StateProvider(   $urlRouterProvider,   $urlMatcherFactory,           $
     // inherit 'data' from parent and override by own values (if any)
     data: function(state) {
       if (state.parent && state.parent.data) {
-        state.data = state.self.data = angular.extend({}, state.parent.data, state.data);
+        state.data = state.self.data = extend({}, state.parent.data, state.data);
       }
       return state.data;
     },
@@ -869,11 +869,14 @@ function $StateProvider(   $urlRouterProvider,   $urlMatcherFactory,           $
     }
   };
 
+  function isRelative(stateName) {
+    return stateName.indexOf(".") === 0 || stateName.indexOf("^") === 0;
+  }
 
   function findState(stateOrName, base) {
     var isStr = isString(stateOrName),
         name  = isStr ? stateOrName : stateOrName.name,
-        path  = name.indexOf(".") === 0 || name.indexOf("^") === 0;
+        path  = isRelative(name);
 
     if (path) {
       if (!base) throw new Error("No reference point given for path '"  + name + "'");
@@ -979,7 +982,11 @@ function $StateProvider(   $urlRouterProvider,   $urlMatcherFactory,           $
       options = extend({ location: true, inherit: false, relative: null }, options);
 
       var toState = findState(to, options.relative);
-      if (!isDefined(toState)) throw new Error("No such state " + toState);
+
+      if (!isDefined(toState)) {
+         if (options.relative) throw new Error("Could not resolve '" + to + "' from state '" + options.relative + "'");
+         throw new Error("No such state '" + to + "'");
+      }
       if (toState['abstract']) throw new Error("Cannot transition to abstract state '" + to + "'");
       if (options.inherit) toParams = inheritParams($stateParams, toParams || {}, $state.$current, toState);
       to = toState;
@@ -1370,7 +1377,7 @@ function $StateRefDirective($state) {
 
       if (ref.paramExpr) {
         scope.$watch(ref.paramExpr, function(newVal, oldVal) {
-          if (newVal !== oldVal) update(newVal);
+          if (newVal !== params) update(newVal);
         }, true);
         params = scope.$eval(ref.paramExpr);
       }
